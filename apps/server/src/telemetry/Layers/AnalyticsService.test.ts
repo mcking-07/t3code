@@ -5,6 +5,7 @@ import { ConfigProvider, Effect, FileSystem, Layer } from "effect";
 import * as HttpServer from "effect/unstable/http/HttpServer";
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse";
+import path from "node:path";
 
 import { ServerConfig } from "../../config.ts";
 import { getTelemetryIdentifier } from "../Identify.ts";
@@ -38,12 +39,11 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
   it.effect("flush drains all buffered events across multiple batches", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
-      const stateDir = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "t3-telemetry-flush-",
-      });
+      const baseDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-telemetry-base-" });
+      const stateDir = path.join(baseDir, "userdata");
 
       const capturedRequests: Array<RecordedBatchRequest> = [];
-      const serverConfigLayer = ServerConfig.layerTest(process.cwd(), stateDir);
+      const serverConfigLayer = ServerConfig.layerTest(process.cwd(), stateDir, baseDir);
 
       const telemetryLayer = AnalyticsServiceLayerLive.pipe(Layer.provideMerge(serverConfigLayer));
       const configLayer = ConfigProvider.layer(
